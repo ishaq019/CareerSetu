@@ -1,0 +1,28 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build output ----
+dist/
+dist-ssr/
+
+# ---- Environment ----
+.env
+.env.*
+!.env.example
+
+# ---- Vite / TS caches ----
+*.tsbuildinfo
+.vite/
+
+# ---- Logs ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ---- Editor / OS ----
+.DS_Store
+*.local
+.vscode/
+.idea/

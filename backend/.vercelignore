@@ -1,0 +1,30 @@
+# Keep the Vercel upload/bundle lean. The local virtualenv in particular
+# (Windows binaries, onnxruntime, etc.) must never be shipped — Vercel builds
+# its own environment from requirements.txt.
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Local database + migrations (not used by the serverless runtime).
+*.sqlite3
+*.db
+alembic/
+alembic.ini
+
+# Dev-only dependency manifest.
+requirements-dev.txt
+
+# Local secrets / env files (configure these in the Vercel dashboard instead).
+.env
+.env.*
+!.env.example
+
+# Tests + misc
+tests/
+test/
+*.md
+.git/

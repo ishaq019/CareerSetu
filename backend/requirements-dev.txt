@@ -1,0 +1,19 @@
+# CareerSetu backend — LOCAL DEV / CI dependencies.
+# Installs everything in the slim runtime set PLUS local-only tooling that is
+# NOT bundled into the Vercel serverless function.
+#
+#   pip install -r requirements-dev.txt
+#
+-r requirements.txt
+
+# ASGI server for running the app locally (Vercel provides its own runtime).
+uvicorn[standard]>=0.30
+
+# Database migrations (run from your machine / CI, not inside the function).
+alembic>=1.13
+
+# Connection pooling for long-lived local processes.
+psycopg-pool>=3.1
+
+# Tests
+pytest>=8.0

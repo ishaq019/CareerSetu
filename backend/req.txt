@@ -1,0 +1,14 @@
+FastAPI
+Uvicorn
+Pydantic
+SQLAlchemy
+Psycopg
+Alembic
+LangChain
+LangChain Groq
+LangGraph
+ChromaDB
+PyJWT
+python-multipart
+PyPDF
+python-docx
