@@ -338,3 +338,102 @@ p { margin: 0; }
 .tag-wrap { display: flex; gap: 7px; flex-wrap: wrap; }
 .footer { border-top: 1px solid var(--border); padding: 30px 0; margin-top: 40px; }
 .footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+
+/* ============================================================================
+   RESPONSIVE — tablet & mobile refinements
+   Layered on top of the component styles above. Goals: tidy single-row mobile
+   nav, comfortable tap targets, tighter spacing, and no horizontal overflow.
+   ============================================================================ */
+
+/* Never let media (or long tokens) push the layout wider than the screen */
+img, svg, video, canvas { max-width: 100%; height: auto; }
+.card { overflow-wrap: anywhere; }
+
+/* ---- Tablet (<= 860px): app shell already collapses the sidebar ---------- */
+@media (max-width: 860px) {
+  /* Turn the wrapped chip nav into a clean, swipeable single-row strip */
+  .mobilebar .side-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;              /* Firefox */
+    scroll-snap-type: x proximity;
+  }
+  .mobilebar .side-nav::-webkit-scrollbar { display: none; } /* WebKit */
+  .mobilebar .side-nav a {
+    flex: 0 0 auto;                     /* keep items on one line */
+    white-space: nowrap;
+    padding: 9px 13px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    scroll-snap-align: start;
+  }
+  .mobilebar .side-nav a.active { box-shadow: none; border-color: var(--a1); }
+
+  .pagehead { padding: 22px 18px 18px; }
+  .pagehead h1 { font-size: 22px; }
+  .page { padding: 22px 18px; }
+  .card { padding: 18px; }
+  .section { padding: 48px 0; }
+}
+
+/* ---- Phone (<= 560px): tighten everything, stack actions ----------------- */
+@media (max-width: 560px) {
+  .wrap { padding: 0 16px; }
+
+  /* Marketing */
+  .topbar .wrap { height: 58px; }
+  .topbar .actions .btn { padding: 9px 13px; font-size: 13.5px; }
+  .hero { padding: 44px 0 32px; }
+  .hero p.lead { font-size: 16px; margin-top: 16px; }
+  .hero .cta-row { margin-top: 24px; }
+  .hero .cta-row .btn { flex: 1 1 100%; }   /* full-width stacked CTAs */
+  .section { padding: 40px 0; }
+  .section-head { margin-bottom: 28px; }
+
+  /* App content */
+  .pagehead { padding: 18px 14px 14px; }
+  .pagehead h1 { font-size: 20px; }
+  .pagehead p { font-size: 13.5px; }
+  .page { padding: 18px 14px; }
+  .card { padding: 15px; border-radius: var(--radius-sm); }
+  .card-h { flex-wrap: wrap; gap: 8px; }
+
+  /* Dashboard tiles: two-up instead of shrinking to one giant column */
+  .tiles { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .tile .k { font-size: 24px; }
+
+  /* Gauge scales down so the report header isn't cramped */
+  .gauge { width: 140px; height: 140px; }
+  .gauge-num b { font-size: 34px; }
+
+  /* Chat */
+  .msg { max-width: 90%; }
+  .chat-log { min-height: 240px; }
+  .composer { flex-wrap: wrap; }
+  .composer .input { flex: 1 1 100%; }
+  .composer .btn { flex: 1 1 100%; }
+
+  /* Rows that can hold long content should wrap instead of overflow */
+  .list-row { flex-wrap: wrap; }
+  .upload-row { flex-wrap: wrap; gap: 8px; }
+
+  /* Auth */
+  .auth-screen { padding: 28px 14px; }
+  .auth-card h1 { font-size: 21px; }
+
+  /* Comfortable tap targets on primary controls */
+  .btn { padding: 12px 16px; }
+  .side-nav a { padding: 11px 13px; }
+}
+
+/* ---- Very small phones (<= 380px) ---------------------------------------- */
+@media (max-width: 380px) {
+  .tiles { grid-template-columns: 1fr; }
+  .brand { font-size: 16px; }
+  .hero h1 { font-size: clamp(30px, 9vw, 40px); }
+}
