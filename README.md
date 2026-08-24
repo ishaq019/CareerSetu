@@ -8,7 +8,9 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com/)
+[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](https://career-setu-azure.vercel.app/)
+
+**🚀 [Live App](https://syedishaq.me/CareerSetu/)** &nbsp;·&nbsp; **⚙️ [Live API](https://career-setu-azure.vercel.app/)** &nbsp;·&nbsp; **❤️ [API Health](https://career-setu-azure.vercel.app/health)**
 
 </div>
 
@@ -141,8 +143,11 @@ npm run dev
 ```
 
 ```env
-# frontend/.env
+# frontend/.env — local development
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+# production (deployed frontend at https://syedishaq.me/CareerSetu/)
+VITE_API_BASE_URL=https://career-setu-azure.vercel.app/api/v1
 ```
 
 ## 🐘 Neon PostgreSQL
