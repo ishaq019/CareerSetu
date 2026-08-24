@@ -1,11 +1,11 @@
 """LLM access boundary.
 
-CareerSetu talks to an OpenAI-compatible LLM gateway (tabitoken.com) over plain
-HTTP with ``httpx`` — no vendor SDK, no langchain. A single static bearer key
-(``LLM_API_KEY``) and one model (``LLM_MODEL``, default ``claude-opus-4-8``) are
-used for every task. Calls run at temperature 0 with bounded timeout, retries and
-output tokens. ``structured`` coerces the reply into a Pydantic schema; ``text``
-returns the raw assistant message.
+CareerSetu talks to an OpenAI-compatible LLM gateway (OpenRouter) over plain
+HTTP with ``httpx`` — no vendor SDK, no langchain. A single API key
+(``LLM_API_KEY``) and one model (``LLM_MODEL``, default a free-tier OpenRouter
+slug) are used for every task. Calls run at temperature 0 with bounded timeout,
+retries and output tokens. ``structured`` coerces the reply into a Pydantic
+schema; ``text`` returns the raw assistant message.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class LLMCallFailed(RuntimeError):
 
 
 def _endpoint() -> str:
-    base = (settings.llm_base_url or "https://tabitoken.com/").rstrip("/")
+    base = (settings.llm_base_url or "https://openrouter.ai/api/v1").rstrip("/")
     # Accept either a bare gateway root or a full ``/v1`` base URL.
     if base.endswith("/v1"):
         return f"{base}/chat/completions"
@@ -44,7 +44,14 @@ def _headers() -> dict[str, str]:
     key = settings.llm_api_key
     scheme = (settings.llm_auth_scheme or "bearer").lower()
     auth = key if scheme == "raw" else f"Bearer {key}"
-    return {"Authorization": auth, "Content-Type": "application/json"}
+    headers = {"Authorization": auth, "Content-Type": "application/json"}
+    # Optional OpenRouter attribution headers (used for their dashboard/rankings
+    # only). Harmless for any other OpenAI-compatible gateway.
+    if settings.llm_referer:
+        headers["HTTP-Referer"] = settings.llm_referer
+    if settings.llm_app_title:
+        headers["X-Title"] = settings.llm_app_title
+    return headers
 
 
 async def _chat(messages: list[dict[str, str]], *, json_mode: bool) -> str:
@@ -65,6 +72,7 @@ async def _chat(messages: list[dict[str, str]], *, json_mode: bool) -> str:
     headers = _headers()
     last_exc: Exception | None = None
     attempts = max(1, settings.llm_max_retries + 1)
+    json_fallback_tried = False
 
     async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
         for attempt in range(attempts):
@@ -81,6 +89,18 @@ async def _chat(messages: list[dict[str, str]], *, json_mode: bool) -> str:
                         raise LLMCallFailed(
                             "LLM gateway returned an unexpected response shape"
                         ) from exc
+                # Some free models reject ``response_format`` with a 4xx. Since
+                # ``structured()`` also embeds the schema in the prompt, drop the
+                # JSON-mode hint once and retry rather than failing outright.
+                if (
+                    json_mode
+                    and not json_fallback_tried
+                    and "response_format" in payload
+                    and resp.status_code in (400, 404, 415, 422)
+                ):
+                    payload.pop("response_format", None)
+                    json_fallback_tried = True
+                    continue
                 # 429 / 5xx are worth retrying; other 4xx are terminal.
                 if resp.status_code in (408, 409, 425, 429) or resp.status_code >= 500:
                     last_exc = LLMCallFailed(

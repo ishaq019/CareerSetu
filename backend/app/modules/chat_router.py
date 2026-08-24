@@ -25,6 +25,10 @@ class ChatRequest(BaseModel):
 
 @router.post("")
 async def chat(payload: ChatRequest, user: User = Depends(current_user)):
+    # Import the exception types up front so they can be caught explicitly below
+    # (rather than matched by class name), mirroring documents/router.py.
+    from app.ai.llm.service import LLMCallFailed, LLMUnavailable
+
     try:
         from app.ai.llm.schemas import GroundedAnswer
         from app.ai.llm.service import structured
@@ -67,19 +71,23 @@ async def chat(payload: ChatRequest, user: User = Depends(current_user)):
             "confidence": result.confidence,
             "sources": [{**sources[n - 1], "citation": n} for n in valid],
         }
+    except LLMUnavailable as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "AI chat is not configured. Set LLM_API_KEY on the backend.",
+        ) from exc
+    except LLMCallFailed as exc:
+        # Provider IS configured but the call failed (bad model, rate limit,
+        # upstream error). 502 = upstream failure, distinct from 503 above.
+        logger.exception("Grounded chat LLM call failed")
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Chat failed calling the LLM provider: {exc}",
+        ) from exc
     except Exception as exc:
+        # Anything else here is a knowledge-store/Chroma problem (unreachable,
+        # misconfigured, tenant/database mismatch, …).
         logger.exception("Grounded chat failed")
-        name = exc.__class__.__name__
-        if name == "LLMUnavailable":
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE,
-                "AI chat is not configured. Set LLM_API_KEY on the backend.",
-            ) from exc
-        if name == "LLMCallFailed":
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE,
-                f"Chat failed calling the LLM provider: {exc}.",
-            ) from exc
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "CareerSetu knowledge service is temporarily unavailable (check Chroma config).",

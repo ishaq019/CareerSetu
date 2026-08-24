@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://syedishaq.me/",
+        "https://career-setu-azure.vercel.app/",
     ]
     jwt_secret: str = "dev-only-change-this-secret-to-a-32-byte-random-value"
     jwt_ttl_minutes: int = 60 * 24 * 7
@@ -45,15 +47,23 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     # --- LLM / RAG -----------------------------------------------------------
-    # CareerSetu talks to an OpenAI-compatible LLM gateway (tabitoken.com). Set
-    # LLM_API_KEY to the static gateway key; everything else has sane defaults.
-    #   LLM_API_KEY=<static bearer key from https://tabitoken.com/keys>
-    llm_provider: str = "tabitoken"
-    llm_base_url: str = "https://tabitoken.com/"
-    llm_api_key: str = "sk-TLd5WVPHZffSqf38NlgMikHVsJZbBrp3mf0vOjkCnh4aHWww"
-    # A single model is used for every task (fast + quality alias the same one).
-    llm_model: str = "claude-opus-4-8"
+    # CareerSetu talks to an OpenAI-compatible LLM gateway (OpenRouter). Set
+    # LLM_API_KEY to your OpenRouter key via the environment / .env — NEVER
+    # hardcode a key here (this file is committed to git).
+    #   LLM_API_KEY=<key from https://openrouter.ai/keys>
+    # Free-tier model slugs on OpenRouter end in ":free" and rotate over time —
+    # browse https://openrouter.ai/models?max_price=0 and override LLM_MODEL if
+    # the default is ever retired.
+    llm_provider: str = "openrouter"
+    llm_base_url: str = "https://openrouter.ai/api/v1"
+    llm_api_key: str = ""
+    # A single model is used for every task.
+    llm_model: str = "google/gemma-4-26b-a4b-it:free"
     llm_auth_scheme: str = "bearer"  # bearer | raw
+    # Optional OpenRouter attribution headers (only affect their dashboard
+    # rankings; safe to leave blank).
+    llm_referer: str = ""
+    llm_app_title: str = "CareerSetu"
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 2
     llm_max_tokens: int = 1200
@@ -71,6 +81,8 @@ class Settings(BaseSettings):
     # Cloud is preferred: set CHROMA_API_KEY, CHROMA_TENANT and CHROMA_DATABASE
     # to use Chroma Cloud (https://www.trychroma.com/). If no API key is set the
     # store falls back to a self-hosted HTTP server at chroma_host:chroma_port.
+    # NOTE: chroma_database is CASE-SENSITIVE — it must match the Chroma Cloud
+    # database name exactly (e.g. "Careersetu" and "careersetu" are different).
     chroma_api_key: str = ""
     chroma_tenant: str = ""
     chroma_database: str = "careersetu"
@@ -129,6 +141,16 @@ class Settings(BaseSettings):
     def chroma_cloud(self) -> bool:
         """True when Chroma Cloud credentials are configured."""
         return bool(self.chroma_api_key and self.chroma_tenant)
+
+    @property
+    def chroma_configured(self) -> bool:
+        """True when a usable Chroma target is configured.
+
+        Either Chroma Cloud credentials, or a self-hosted host that isn't the
+        localhost default (there is no local Chroma server in serverless, so the
+        default ``localhost`` host counts as *not* configured).
+        """
+        return self.chroma_cloud or self.chroma_host not in ("localhost", "127.0.0.1")
 
     @property
     def google_oauth_configured(self) -> bool:

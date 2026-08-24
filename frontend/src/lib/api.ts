@@ -1,9 +1,9 @@
 // Typed API client for the CareerSetu backend. Centralises the base URL, JWT
 // bearer token, JSON handling and error surfacing so pages stay declarative.
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-  "http://localhost:8000/api/v1";
+const API_BASE = "https://career-setu-azure.vercel.app/api/v1";
+  // (import.meta.env.VITE_API_BASE_URL as string | undefined)
+  // "http://localhost:8000/api/v1";
 
 /** Absolute base URL of the backend API — used for full-page OAuth redirects. */
 export const apiBaseUrl = API_BASE;

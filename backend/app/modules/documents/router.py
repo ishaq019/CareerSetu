@@ -2,6 +2,8 @@
 (resume optimisation + cover letter)."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
@@ -17,6 +19,7 @@ from app.modules.documents.service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("careersetu.documents")
 ALLOWED = {PDF_MIME, DOCX_MIME}
 
 
@@ -90,21 +93,44 @@ async def upload(file: UploadFile = File(...)):
 async def ingest_knowledge(
     file: UploadFile = File(...), user: User = Depends(current_user)
 ):
-    if user.email.lower() not in settings.knowledge_admin_emails:
+    if not settings.is_admin_email(user.email):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Knowledge-base ingestion is restricted to CareerSetu administrators.",
         )
     content, text = await read_document(file)
+
+    # In serverless (e.g. Vercel) there is NO local Chroma server, so Chroma
+    # Cloud must be configured. Fail fast with an actionable message instead of
+    # letting a raw connection-refused error surface as a vague failure.
+    if not settings.chroma_configured:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Knowledge store is not configured. Set CHROMA_API_KEY and CHROMA_TENANT "
+            "(Chroma Cloud) on the backend, or point CHROMA_HOST/CHROMA_PORT at a "
+            "running Chroma server.",
+        )
+
     try:
         from app.ai.rag.store import KnowledgeStore
+    except ImportError as exc:
+        logger.exception("chromadb client import failed")
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Knowledge store dependency (chromadb-client) is not installed on the backend.",
+        ) from exc
 
+    try:
         pages = extract_pages(file.filename or "document", file.content_type, content)
         chunks = KnowledgeStore().add_text(text, file.filename or "document", pages=pages)
     except Exception as exc:
+        # Chroma IS configured but the call failed (bad credentials, unreachable
+        # host, tenant/database not found, …). Surface the real reason — this
+        # endpoint is admin-only, so leaking the detail is acceptable and useful.
+        logger.exception("Knowledge ingestion failed")
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Knowledge store or embeddings are not configured.",
+            status.HTTP_502_BAD_GATEWAY,
+            f"Knowledge store call failed: {exc}",
         ) from exc
     return {
         "filename": file.filename,
@@ -115,10 +141,10 @@ async def ingest_knowledge(
 
 @router.post("/resume/create")
 async def create_resume(payload: ResumeCreateRequest, user: User = Depends(current_user)):
-    try:
-        from app.ai.llm.schemas import ResumeDraft
-        from app.ai.llm.service import structured
+    from app.ai.llm.schemas import ResumeDraft
+    from app.ai.llm.service import LLMCallFailed, LLMUnavailable, structured
 
+    try:
         draft = await structured(
             "resume",
             "Create ATS-oriented resume content using only the candidate resume and target "
@@ -128,12 +154,17 @@ async def create_resume(payload: ResumeCreateRequest, user: User = Depends(curre
             f"Target job:\n{payload.job_description[: settings.llm_context_chars]}",
             ResumeDraft,
         )
-        return draft.model_dump()
-    except Exception as exc:
+    except LLMUnavailable as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "AI resume generation is not configured. Set LLM_API_KEY on the backend.",
         ) from exc
+    except LLMCallFailed as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"AI resume generation failed calling the LLM provider: {exc}",
+        ) from exc
+    return draft.model_dump()
 
 
 @router.post("/resume/latex")
@@ -152,24 +183,24 @@ async def create_resume_latex(payload: ResumeCreateRequest, user: User = Depends
     partial_skills = [g["skill"] for g in report.get("gaps", []) if g.get("status") == "partial"]
     matched_skills = [s["skill"] for s in report.get("strengths", [])]
 
-    try:
-        from app.ai.llm.schemas import LatexResumeContent
-        from app.ai.llm.service import structured
-        from app.modules.documents.latex_resume import render_latex
+    from app.ai.llm.schemas import LatexResumeContent
+    from app.ai.llm.service import LLMCallFailed, LLMUnavailable, structured
+    from app.modules.documents.latex_resume import render_latex
 
-        system = (
-            "You restructure a candidate's resume into ATS-optimised, structured content "
-            "tailored to a target job, for rendering into LaTeX. STRICT RULES: use only facts "
-            "present in the candidate's resume — never invent employers, roles, dates, degrees, "
-            "metrics, certifications or tools. You MAY rephrase bullets for impact, reorder to "
-            "surface the most job-relevant experience first, and naturally incorporate job-"
-            "description keywords the candidate genuinely demonstrates. Extract accurate contact "
-            "details. Write a 2-3 sentence objective tailored to the target role. Group skills "
-            "into sensible categories and ensure legitimately-held skills that match the job "
-            "description are represented. Keep bullets concise and results-oriented."
-        )
-        emphasis = ", ".join((partial_skills + missing_skills)[:15]) or "the job's core requirements"
-        keyword_hint = ", ".join(missing_skills[:15]) or "none detected"
+    system = (
+        "You restructure a candidate's resume into ATS-optimised, structured content "
+        "tailored to a target job, for rendering into LaTeX. STRICT RULES: use only facts "
+        "present in the candidate's resume — never invent employers, roles, dates, degrees, "
+        "metrics, certifications or tools. You MAY rephrase bullets for impact, reorder to "
+        "surface the most job-relevant experience first, and naturally incorporate job-"
+        "description keywords the candidate genuinely demonstrates. Extract accurate contact "
+        "details. Write a 2-3 sentence objective tailored to the target role. Group skills "
+        "into sensible categories and ensure legitimately-held skills that match the job "
+        "description are represented. Keep bullets concise and results-oriented."
+    )
+    emphasis = ", ".join((partial_skills + missing_skills)[:15]) or "the job's core requirements"
+    keyword_hint = ", ".join(missing_skills[:15]) or "none detected"
+    try:
         content = await structured(
             "resume",
             system,
@@ -179,13 +210,17 @@ async def create_resume_latex(payload: ResumeCreateRequest, user: User = Depends
             f"Target job description:\n{payload.job_description[: settings.llm_context_chars]}",
             LatexResumeContent,
         )
-        latex = render_latex(content)
-    except Exception as exc:
+    except LLMUnavailable as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "AI resume generation is not configured or failed. Set a valid "
-            f"LLM_API_KEY on the backend. ({exc.__class__.__name__})",
+            "AI resume generation is not configured. Set LLM_API_KEY on the backend.",
         ) from exc
+    except LLMCallFailed as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"AI resume generation failed calling the LLM provider: {exc}",
+        ) from exc
+    latex = render_latex(content)
 
     safe_name = (content.contact.name or "resume").strip().replace(" ", "_") or "resume"
     return {
@@ -203,11 +238,11 @@ async def create_resume_latex(payload: ResumeCreateRequest, user: User = Depends
 
 @router.post("/cover-letter")
 async def create_cover_letter(payload: CoverLetterRequest, user: User = Depends(current_user)):
-    try:
-        from app.ai.llm.schemas import CoverLetterDraft
-        from app.ai.llm.service import structured
+    from app.ai.llm.schemas import CoverLetterDraft
+    from app.ai.llm.service import LLMCallFailed, LLMUnavailable, structured
 
-        target = ", ".join(x for x in [payload.role, payload.company] if x) or "the target role"
+    target = ", ".join(x for x in [payload.role, payload.company] if x) or "the target role"
+    try:
         draft = await structured(
             "resume",
             "Write a concise, specific cover letter using only facts present in the candidate's "
@@ -218,9 +253,14 @@ async def create_cover_letter(payload: CoverLetterRequest, user: User = Depends(
             f"Job description:\n{payload.job_description[: settings.llm_context_chars]}",
             CoverLetterDraft,
         )
-        return draft.model_dump()
-    except Exception as exc:
+    except LLMUnavailable as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "AI cover-letter generation is not configured. Set LLM_API_KEY on the backend.",
         ) from exc
+    except LLMCallFailed as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"AI cover-letter generation failed calling the LLM provider: {exc}",
+        ) from exc
+    return draft.model_dump()

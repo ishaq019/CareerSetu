@@ -73,6 +73,7 @@ def ai_health():
         "provider_configured": settings.llm_configured,
         "provider": settings.llm_provider or None,
         "retrieval_mode": "lexical_chroma",
+        "chroma_configured": settings.chroma_configured,
         "chroma_mode": "cloud" if settings.chroma_cloud else "self_hosted",
         "fast_model": settings.llm_fast_model,
         "quality_model": settings.llm_quality_model,

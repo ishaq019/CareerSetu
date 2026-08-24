@@ -8,7 +8,7 @@ FastAPI service powering CareerSetu's analysis, authentication, RAG chat and ada
 - 🗄️ **SQLAlchemy 2.0** + **Alembic** — ORM & migrations
 - 🐘 **psycopg 3** — Neon / PostgreSQL driver (defaults to SQLite for zero-config local dev)
 - 🔐 **PyJWT** — signed JWTs; passwords hashed with stdlib **PBKDF2-SHA256**
-- 🌐 **OpenAI-compatible LLM gateway** (tabitoken.com) over **httpx** — optional, lazy-loaded AI stack (no vendor SDK)
+- 🌐 **OpenAI-compatible LLM gateway** (OpenRouter, free-tier model) over **httpx** — optional, lazy-loaded AI stack (no vendor SDK)
 - 🟣 **chromadb-client** — thin Chroma Cloud HTTP client (lexical retrieval, no embeddings)
 
 ## 🚀 Quick start
@@ -45,7 +45,8 @@ JWT_SECRET=change-me-to-a-long-random-string
 CORS_ORIGINS=http://localhost:5173
 
 # Optional AI stack
-LLM_API_KEY=your_tabitoken_gateway_key
+LLM_API_KEY=your_openrouter_api_key   # from https://openrouter.ai/keys
+LLM_MODEL=google/gemma-4-26b-a4b-it:free   # any free-tier slug (ends in :free)
 CHROMA_API_KEY=your_chroma_cloud_key
 CHROMA_TENANT=your_tenant_id
 CHROMA_DATABASE=careersetu
@@ -65,7 +66,7 @@ backend/
 │  ├─ api/            route router
 │  ├─ core/           config & security (JWT, PBKDF2)
 │  ├─ modules/        analysis · auth · documents · roadmap
-│  └─ ai/             llm · rag · agents (LangGraph interview)
+│  └─ ai/             llm (httpx gateway) · rag (lexical knowledge store)
 ├─ migrations/        Alembic migrations
 ├─ tests/             pytest suite
 ├─ requirements.txt   slim runtime deps (Vercel)

@@ -1,8 +1,8 @@
 """Adaptive interview preparation.
 
 - ``POST /interview/question`` generates a question for a role/topic/difficulty.
-- ``POST /interview/evaluate`` scores a candidate answer via the LangGraph graph
-  and stores the attempt so difficulty can adapt over time.
+- ``POST /interview/evaluate`` scores a candidate answer with the LLM and stores
+  the attempt so difficulty can adapt over time.
 - ``GET /interview/history`` returns past attempts.
 """
 from __future__ import annotations
@@ -120,9 +120,10 @@ async def evaluate(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ):
+    from app.ai.llm.service import LLMCallFailed, LLMUnavailable, structured
+
     try:
         from app.ai.llm.schemas import InterviewEvaluation
-        from app.ai.llm.service import structured
 
         evaluation = await structured(
             "evaluate",
@@ -133,18 +134,20 @@ async def evaluate(
             InterviewEvaluation,
         )
         result = evaluation.model_dump()
-    except Exception as exc:
-        from app.ai.llm.service import LLMUnavailable
-
-        logger.exception("Interview evaluation failed")
-        if isinstance(exc, LLMUnavailable):
-            detail = (
-                "AI evaluation needs a configured LLM provider. Set LLM_API_KEY "
-                "on the backend."
-            )
-        else:
-            detail = f"Interview evaluation failed calling the LLM provider: {exc}"
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail) from exc
+    except LLMUnavailable as exc:
+        logger.exception("Interview evaluation failed: provider not configured")
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "AI evaluation needs a configured LLM provider. Set LLM_API_KEY on the backend.",
+        ) from exc
+    except LLMCallFailed as exc:
+        # Provider IS configured but the call failed — 502, matching the other
+        # AI endpoints (documents/router.py), so callers get an accurate reason.
+        logger.exception("Interview evaluation failed calling the LLM provider")
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Interview evaluation failed calling the LLM provider: {exc}",
+        ) from exc
 
     attempt = InterviewAttempt(
         user_id=user.id,

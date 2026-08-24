@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnalysisRequest(BaseModel):
@@ -41,6 +41,8 @@ class AnalysisResponse(BaseModel):
 
 
 class HistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     match_score: int
