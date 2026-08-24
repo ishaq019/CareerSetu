@@ -17,6 +17,7 @@ type AuthState = {
   ready: boolean; // finished the initial token check
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -60,14 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (email: string, password: string) => authenticate("/auth/signup", email, password),
     [authenticate],
   );
+  // Adopt a token issued out-of-band (e.g. the Google OAuth redirect) and load
+  // the corresponding user.
+  const loginWithToken = useCallback(async (token: string) => {
+    setToken(token);
+    const u = await api.get<User>("/auth/me");
+    setUser(u);
+  }, []);
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, login, signup, logout }),
-    [user, ready, login, signup, logout],
+    () => ({ user, ready, login, signup, loginWithToken, logout }),
+    [user, ready, login, signup, loginWithToken, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

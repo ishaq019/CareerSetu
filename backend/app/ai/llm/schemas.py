@@ -63,3 +63,70 @@ class CoverLetterDraft(BaseModel):
     body: list[str] = Field(default_factory=list, description="Body paragraphs")
     closing: str = Field(description="Closing paragraph")
     signature: str = Field(default="Sincerely,")
+
+
+# --- LaTeX resume builder ---------------------------------------------------
+# Structured extraction of a candidate's resume, tailored to a target job. The
+# backend renders these fields into a LaTeX document (see documents/latex_resume.py).
+
+
+class ResumeContact(BaseModel):
+    name: str = Field(default="", description="Candidate full name from the resume")
+    title: str = Field(default="", description="Professional headline, e.g. 'Backend Engineer'")
+    phone: str = ""
+    email: str = ""
+    location: str = ""
+    portfolio: str = Field(default="", description="Portfolio/website URL if present")
+    linkedin: str = Field(default="", description="LinkedIn URL or handle if present")
+    github: str = Field(default="", description="GitHub URL or handle if present")
+
+
+class ResumeEducation(BaseModel):
+    institution: str = ""
+    degree: str = ""
+    date: str = Field(default="", description="e.g. '2021 - 2025'")
+    detail: str = Field(default="", description="GPA, honors or short note; optional")
+
+
+class ResumeSkillGroup(BaseModel):
+    category: str = Field(description="e.g. 'Languages', 'Frameworks', 'Databases & Tools'")
+    items: list[str] = Field(default_factory=list)
+
+
+class ResumeProject(BaseModel):
+    name: str = ""
+    tech_stack: str = Field(default="", description="Comma-separated technologies")
+    date: str = ""
+    github: str = Field(default="", description="Repo URL, optional")
+    live: str = Field(default="", description="Live demo URL, optional")
+    bullets: list[str] = Field(
+        default_factory=list, description="Impact-oriented bullet points, grounded in the resume"
+    )
+
+
+class ResumeExperience(BaseModel):
+    company: str = ""
+    role: str = ""
+    date: str = ""
+    location: str = ""
+    bullets: list[str] = Field(default_factory=list)
+
+
+class LatexResumeContent(BaseModel):
+    """A resume restructured and tailored to a target job for LaTeX rendering.
+
+    The model must NOT invent employers, dates, degrees, metrics or credentials.
+    It may rephrase for ATS alignment and weave in job-description keywords the
+    candidate legitimately demonstrates.
+    """
+
+    contact: ResumeContact = Field(default_factory=ResumeContact)
+    objective: str = Field(default="", description="2-3 sentence summary tailored to the target job")
+    education: list[ResumeEducation] = Field(default_factory=list)
+    skill_groups: list[ResumeSkillGroup] = Field(default_factory=list)
+    experience: list[ResumeExperience] = Field(default_factory=list)
+    projects: list[ResumeProject] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
+    ats_keywords: list[str] = Field(
+        default_factory=list, description="Key JD terms surfaced in the tailored resume"
+    )

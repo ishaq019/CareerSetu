@@ -1,11 +1,13 @@
+import asyncio
+
 import pytest
 
-from app.ai.llm.service import LLMUnavailable, _model
+from app.ai.llm.service import LLMUnavailable, _chat
 
-def test_groq_provider_requires_api_key(monkeypatch):
-    _model.cache_clear()
-    monkeypatch.setattr("app.ai.llm.service.settings.llm_provider", "groq")
+
+def test_gateway_requires_api_key(monkeypatch):
     monkeypatch.setattr("app.ai.llm.service.settings.llm_api_key", "")
     with pytest.raises(LLMUnavailable):
-        _model("chat")
-    _model.cache_clear()
+        asyncio.run(
+            _chat([{"role": "user", "content": "hi"}], json_mode=False)
+        )

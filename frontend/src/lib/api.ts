@@ -5,6 +5,9 @@ const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
   "http://localhost:8000/api/v1";
 
+/** Absolute base URL of the backend API — used for full-page OAuth redirects. */
+export const apiBaseUrl = API_BASE;
+
 const TOKEN_KEY = "careersetu_token";
 
 export function getToken(): string | null {

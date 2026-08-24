@@ -177,8 +177,8 @@ CareerSetu uses **Groq** as its only LLM provider, isolated behind `app/ai/llm/s
 ```env
 LLM_PROVIDER=groq
 LLM_API_KEY=your_groq_api_key
-LLM_FAST_MODEL=llama-3.1-8b-instant
-LLM_QUALITY_MODEL=llama-3.3-70b-versatile
+LLM_FAST_MODEL=openai/gpt-oss-20b
+LLM_QUALITY_MODEL=openai/gpt-oss-120b
 LLM_TIMEOUT_SECONDS=30
 LLM_MAX_RETRIES=2
 LLM_MAX_TOKENS=1200
@@ -234,9 +234,9 @@ CareerSetu/
 
 ## 🗺️ Implementation status
 
-**✅ Implemented:** React UI · FastAPI API · Neon/PostgreSQL config · Alembic migrations · email/password auth · JWT protection · guest resume/JD analysis · PDF/DOCX extraction · page-aware processing · Chroma Cloud knowledge store · lexical hybrid retrieval · grounded structured chat · LangGraph interview evaluation · roadmap endpoint · security boundaries.
+**✅ Implemented:** React UI · FastAPI API · Neon/PostgreSQL config · Alembic migrations · email/password auth · **Google OAuth 2.0 sign-in** · JWT protection · guest resume/JD analysis · PDF/DOCX extraction · page-aware processing · Chroma Cloud knowledge store · lexical hybrid retrieval · grounded structured chat · LangGraph interview evaluation · roadmap endpoint · security boundaries.
 
-**🚧 Roadmap:** full Google OAuth callback/session flow · persistent LangGraph checkpoints · resume-optimization PDF delivery · background ingestion workers · object storage · production rate limiting and observability.
+**🚧 Roadmap:** persistent LangGraph checkpoints · resume-optimization PDF delivery · background ingestion workers · object storage · production rate limiting and observability.
 
 ## 📄 License
 

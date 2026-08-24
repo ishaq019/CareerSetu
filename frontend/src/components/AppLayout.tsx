@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import {
   BrainCircuit,
+  Database,
   FileText,
   Gauge,
   History,
@@ -27,10 +28,16 @@ const NAV = [
   { to: "/app/history", label: "Saved analyses", icon: History, end: false },
 ];
 
+const ADMIN_NAV = [
+  { to: "/app/knowledge", label: "Knowledge base", icon: Database, end: false },
+];
+
 function NavItems() {
+  const { user } = useAuth();
+  const items = user?.is_admin ? [...NAV, ...ADMIN_NAV] : NAV;
   return (
     <nav className="side-nav">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end}>
           <Icon size={17} />
           {label}
@@ -51,6 +58,12 @@ export function ProtectedRoute() {
       </div>
     );
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  return <Outlet />;
+}
+
+export function AdminRoute() {
+  const { user } = useAuth();
+  if (!user?.is_admin) return <Navigate to="/app" replace />;
   return <Outlet />;
 }
 

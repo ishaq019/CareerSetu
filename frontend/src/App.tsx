@@ -1,7 +1,7 @@
 // Route map. Public: landing + auth. Protected app shell: dashboard and tools.
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Aurora } from "./components/Aurora";
-import { AppLayout, ProtectedRoute } from "./components/AppLayout";
+import { AppLayout, AdminRoute, ProtectedRoute } from "./components/AppLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -12,6 +12,7 @@ import Resume from "./pages/Resume";
 import CoverLetter from "./pages/CoverLetter";
 import Roadmap from "./pages/Roadmap";
 import History from "./pages/History";
+import Knowledge from "./pages/Knowledge";
 
 export default function App() {
   return (
@@ -31,6 +32,9 @@ export default function App() {
             <Route path="cover-letter" element={<CoverLetter />} />
             <Route path="roadmap" element={<Roadmap />} />
             <Route path="history" element={<History />} />
+            <Route element={<AdminRoute />}>
+              <Route path="knowledge" element={<Knowledge />} />
+            </Route>
           </Route>
         </Route>
 

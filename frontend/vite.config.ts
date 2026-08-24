@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 // project site is served under /<repo>/, so the workflow passes VITE_BASE
 // (from actions/configure-pages) at build time. Defaults to "/" for local dev.
 export default defineConfig({
-  base: process.env.VITE_BASE || "/",
+  base: "/",
   plugins: [react()],
   server: { port: 5173 },
 });

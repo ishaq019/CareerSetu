@@ -132,8 +132,73 @@ async def create_resume(payload: ResumeCreateRequest, user: User = Depends(curre
     except Exception as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "AI resume generation is not configured. Set LLM_PROVIDER=groq and LLM_API_KEY.",
+            "AI resume generation is not configured. Set LLM_API_KEY on the backend.",
         ) from exc
+
+
+@router.post("/resume/latex")
+async def create_resume_latex(payload: ResumeCreateRequest, user: User = Depends(current_user)):
+    """Build a downloadable, ATS-tailored LaTeX resume.
+
+    Combines the deterministic gap analysis (missing skills / ATS keywords from
+    the JD) with an LLM restructuring of the candidate's real resume, then
+    renders a compilable ``.tex`` document. Returns the LaTeX plus the gap data
+    so the SPA can highlight what was optimised.
+    """
+    from app.modules.analysis.service import analyze
+
+    report = analyze(payload.resume_text, payload.job_description)
+    missing_skills = [g["skill"] for g in report.get("gaps", []) if g.get("status") == "missing"]
+    partial_skills = [g["skill"] for g in report.get("gaps", []) if g.get("status") == "partial"]
+    matched_skills = [s["skill"] for s in report.get("strengths", [])]
+
+    try:
+        from app.ai.llm.schemas import LatexResumeContent
+        from app.ai.llm.service import structured
+        from app.modules.documents.latex_resume import render_latex
+
+        system = (
+            "You restructure a candidate's resume into ATS-optimised, structured content "
+            "tailored to a target job, for rendering into LaTeX. STRICT RULES: use only facts "
+            "present in the candidate's resume — never invent employers, roles, dates, degrees, "
+            "metrics, certifications or tools. You MAY rephrase bullets for impact, reorder to "
+            "surface the most job-relevant experience first, and naturally incorporate job-"
+            "description keywords the candidate genuinely demonstrates. Extract accurate contact "
+            "details. Write a 2-3 sentence objective tailored to the target role. Group skills "
+            "into sensible categories and ensure legitimately-held skills that match the job "
+            "description are represented. Keep bullets concise and results-oriented."
+        )
+        emphasis = ", ".join((partial_skills + missing_skills)[:15]) or "the job's core requirements"
+        keyword_hint = ", ".join(missing_skills[:15]) or "none detected"
+        content = await structured(
+            "resume",
+            system,
+            f"Target job's key skills to emphasise where the resume supports them: {emphasis}\n"
+            f"ATS keywords from the job the resume currently lacks (only include if truthful): {keyword_hint}\n\n"
+            f"Candidate resume:\n{payload.resume_text[: settings.llm_context_chars]}\n\n"
+            f"Target job description:\n{payload.job_description[: settings.llm_context_chars]}",
+            LatexResumeContent,
+        )
+        latex = render_latex(content)
+    except Exception as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "AI resume generation is not configured or failed. Set a valid "
+            f"LLM_API_KEY on the backend. ({exc.__class__.__name__})",
+        ) from exc
+
+    safe_name = (content.contact.name or "resume").strip().replace(" ", "_") or "resume"
+    return {
+        "latex": latex,
+        "filename": f"{safe_name}_CareerSetu.tex",
+        "content": content.model_dump(),
+        "match_score": report.get("match_score", 0),
+        "ats_coverage": report.get("ats_coverage", 0),
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "partial_skills": partial_skills,
+        "ats_keywords": content.ats_keywords,
+    }
 
 
 @router.post("/cover-letter")
@@ -157,5 +222,5 @@ async def create_cover_letter(payload: CoverLetterRequest, user: User = Depends(
     except Exception as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "AI cover-letter generation is not configured. Set LLM_PROVIDER=groq and LLM_API_KEY.",
+            "AI cover-letter generation is not configured. Set LLM_API_KEY on the backend.",
         ) from exc

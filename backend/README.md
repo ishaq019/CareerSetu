@@ -8,7 +8,7 @@ FastAPI service powering CareerSetu's analysis, authentication, RAG chat and ada
 - 🗄️ **SQLAlchemy 2.0** + **Alembic** — ORM & migrations
 - 🐘 **psycopg 3** — Neon / PostgreSQL driver (defaults to SQLite for zero-config local dev)
 - 🔐 **PyJWT** — signed JWTs; passwords hashed with stdlib **PBKDF2-SHA256**
-- 🦜 **LangChain** + 🕸️ **LangGraph** + ⚡ **Groq** — optional, lazy-loaded AI stack
+- 🌐 **OpenAI-compatible LLM gateway** (tabitoken.com) over **httpx** — optional, lazy-loaded AI stack (no vendor SDK)
 - 🟣 **chromadb-client** — thin Chroma Cloud HTTP client (lexical retrieval, no embeddings)
 
 ## 🚀 Quick start
@@ -45,7 +45,7 @@ JWT_SECRET=change-me-to-a-long-random-string
 CORS_ORIGINS=http://localhost:5173
 
 # Optional AI stack
-LLM_API_KEY=your_groq_api_key
+LLM_API_KEY=your_tabitoken_gateway_key
 CHROMA_API_KEY=your_chroma_cloud_key
 CHROMA_TENANT=your_tenant_id
 CHROMA_DATABASE=careersetu

@@ -3,13 +3,25 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { api, ApiError } from "../lib/api";
+import { apiBaseUrl, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Aurora } from "../components/Aurora";
 import { Brand, Button, ErrorAlert, Field, Input } from "../components/ui";
 
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_not_configured: "Google sign-in isn't configured on the server yet.",
+  invalid_state: "Your sign-in session expired. Please try again.",
+  missing_code: "Google sign-in was cancelled or incomplete.",
+  token_exchange_failed: "Google sign-in failed during token exchange.",
+  google_unreachable: "Couldn't reach Google. Check your connection and retry.",
+  email_unverified: "Your Google account email must be verified to sign in.",
+  access_denied: "Google sign-in was cancelled.",
+  account_persist_failed:
+    "We couldn't save your account. The server database may be missing a migration (run alembic upgrade head).",
+};
+
 export default function Login() {
-  const { user, login, signup } = useAuth();
+  const { user, login, signup, loginWithToken } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,6 +40,22 @@ export default function Login() {
     if (user) navigate(from, { replace: true });
   }, [user, from, navigate]);
 
+  // Handle the Google OAuth redirect: the backend returns either
+  // `#token=<jwt>` (success) or `?error=<code>` (failure).
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const token = hash.get("token");
+    const errCode = params.get("error");
+    if (token) {
+      window.history.replaceState(null, "", window.location.pathname);
+      loginWithToken(token)
+        .then(() => navigate("/app", { replace: true }))
+        .catch(() => setError("Google sign-in could not be completed. Please try again."));
+    } else if (errCode) {
+      setError(OAUTH_ERRORS[errCode] || "Google sign-in failed. Please try again.");
+    }
+  }, [params, loginWithToken, navigate]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -43,15 +71,11 @@ export default function Login() {
     }
   }
 
-  async function google() {
+  function google() {
     setError("");
     setNotice("");
-    try {
-      const res = await api.get<{ message: string }>("/auth/google", { auth: false });
-      setNotice(res.message);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Google sign-in is unavailable.");
-    }
+    // Full-page redirect to begin the server-side OAuth flow.
+    window.location.href = `${apiBaseUrl}/auth/google`;
   }
 
   return (

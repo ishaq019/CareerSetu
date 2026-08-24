@@ -75,7 +75,7 @@ pytest -q
    - `DATABASE_URL` — your Neon Postgres URL (do NOT rely on SQLite; the function filesystem is ephemeral/read-only)
    - `JWT_SECRET` — a long random string
    - `CORS_ORIGINS` — your frontend origin(s)
-   - `LLM_API_KEY` (Groq) — optional; AI routes return 503 without it
+   - `LLM_API_KEY` (tabitoken gateway) — optional; AI routes return 503 without it
    - `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE` — for Chroma Cloud (optional)
 5. Deploy. The API is served at `https://<project>.vercel.app/api/v1/...`
    and health at `/health`.

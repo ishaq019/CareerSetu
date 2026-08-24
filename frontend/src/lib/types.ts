@@ -1,6 +1,6 @@
 // Shared API response types mirroring the backend Pydantic schemas.
 
-export type User = { id: number; email: string };
+export type User = { id: number; email: string; is_admin?: boolean };
 
 export type TokenResponse = { access_token: string; token_type: string; user: User };
 
@@ -94,3 +94,65 @@ export type CoverLetterDraft = {
 };
 
 export type RoadmapDoc = { items: any[] };
+
+// --- LaTeX resume builder ---------------------------------------------------
+
+export type ResumeContact = {
+  name: string;
+  title: string;
+  phone: string;
+  email: string;
+  location: string;
+  portfolio: string;
+  linkedin: string;
+  github: string;
+};
+export type ResumeEducation = {
+  institution: string;
+  degree: string;
+  date: string;
+  detail: string;
+};
+export type ResumeSkillGroup = { category: string; items: string[] };
+export type ResumeProject = {
+  name: string;
+  tech_stack: string;
+  date: string;
+  github: string;
+  live: string;
+  bullets: string[];
+};
+export type ResumeExperience = {
+  company: string;
+  role: string;
+  date: string;
+  location: string;
+  bullets: string[];
+};
+export type LatexResumeContent = {
+  contact: ResumeContact;
+  objective: string;
+  education: ResumeEducation[];
+  skill_groups: ResumeSkillGroup[];
+  experience: ResumeExperience[];
+  projects: ResumeProject[];
+  certifications: string[];
+  ats_keywords: string[];
+};
+export type LatexResumeResult = {
+  latex: string;
+  filename: string;
+  content: LatexResumeContent;
+  match_score: number;
+  ats_coverage: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  partial_skills: string[];
+  ats_keywords: string[];
+};
+
+export type KnowledgeIngestResult = {
+  filename: string;
+  chunks_indexed: number;
+  message: string;
+};

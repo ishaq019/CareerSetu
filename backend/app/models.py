@@ -20,7 +20,16 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(512))
+    # Nullable: accounts created via Google OAuth have no local password.
+    password_hash: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # OAuth identity (Google's stable subject id) + profile, populated for
+    # social logins. ``auth_provider`` is "password" or "google".
+    auth_provider: Mapped[str] = mapped_column(String(32), default="password")
+    google_sub: Mapped[str | None] = mapped_column(
+        String(255), unique=True, index=True, nullable=True
+    )
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

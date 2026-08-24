@@ -21,16 +21,9 @@ python-docx>=1.1
 psycopg[binary]>=3.1
 
 # --- AI stack (optional at runtime; returns 503 if the LLM key is unset) -------
-# Only needed for LLM/RAG features (analysis enhancement, chat, interview,
-# resume/cover-letter generation).
-langchain>=0.3
-langchain-text-splitters>=0.3
-langchain-groq>=0.2
-langgraph>=0.2
-
-# Chroma Cloud access via the THIN HTTP client. This is a subset of the full
-# `chromadb` package and pulls NONE of onnxruntime / tokenizers / numpy /
-# grpcio / kubernetes / opentelemetry — the packages that pushed the bundle
-# well past Vercel's 250 MB limit. Retrieval here is lexical (no embeddings),
-# so the server/embedding machinery in full `chromadb` is unnecessary.
+# The LLM is reached over plain HTTP (OpenAI-compatible gateway, tabitoken.com)
+# using httpx — no vendor SDK, no langchain/langgraph. Only the thin Chroma HTTP
+# client is needed for the knowledge base (lexical retrieval, no embeddings), and
+# it pulls NONE of onnxruntime / tokenizers / numpy / grpcio — the packages that
+# pushed the bundle past Vercel's 250 MB limit.
 chromadb-client>=0.5
