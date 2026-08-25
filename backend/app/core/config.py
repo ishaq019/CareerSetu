@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://syedishaq.me/",
-        "https://career-setu-azure.vercel.app/",
+        "https://syedishaq.me",
+        "https://career-setu-azure.vercel.app",
     ]
     jwt_secret: str = "dev-only-change-this-secret-to-a-32-byte-random-value"
     jwt_ttl_minutes: int = 60 * 24 * 7
@@ -106,9 +106,16 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _parse_cors(cls, value):
-        if isinstance(value, str):
-            return [x.strip() for x in value.split(",") if x.strip()]
-        return value
+        items = (
+            [x.strip() for x in value.split(",")]
+            if isinstance(value, str)
+            else list(value or [])
+        )
+        # A browser Origin header is scheme://host[:port] with NO trailing slash
+        # or path, so normalise entries ("https://syedishaq.me/" →
+        # "https://syedishaq.me"). A mismatched slash is a silent, total CORS
+        # failure, so strip it here as well as in the defaults above.
+        return [x.rstrip("/") for x in items if x.strip()]
 
     @field_validator("knowledge_admin_emails", mode="before")
     @classmethod
