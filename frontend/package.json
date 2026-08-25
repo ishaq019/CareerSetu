@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-    "homepage": "https://syedishaq.me/careersetu",
+  "homepage": "https://syedishaq.me/CareerSetu/",
 
   "scripts": {
     "dev": "vite",
