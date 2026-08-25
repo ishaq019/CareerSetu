@@ -35,9 +35,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS. ``allow_origins`` is the env-overridable explicit list; ``allow_origin_regex``
+# is a safety net for the production domain (and any subdomain) so a misconfigured
+# or stale ``CORS_ORIGINS`` env var on the host can never silently break sign-in —
+# Starlette ORs the regex with the list, so localhost entries still work. A browser
+# Origin is scheme://host[:port] with no trailing slash, which is what these match.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=r"https://([a-z0-9-]+\.)*syedishaq\.me",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
