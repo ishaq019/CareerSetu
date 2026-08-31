@@ -1,6 +1,6 @@
 // Dashboard: a quick snapshot (saved analyses, best score, interview attempts)
 // plus a grid of tool shortcuts.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BrainCircuit,
@@ -10,11 +10,11 @@ import {
   PenLine,
   Map as MapIcon,
 } from "lucide-react";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { HistoryItem, InterviewAttempt } from "../lib/types";
 import { Page } from "../components/AppLayout";
-import { Card } from "../components/ui";
+import { Button, Card, ErrorAlert } from "../components/ui";
 
 const TOOLS = [
   { to: "/app/analyze", icon: Gauge, title: "Job-fit analysis", body: "Score a resume against a role and save the report." },
@@ -30,20 +30,55 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [attempts, setAttempts] = useState<InterviewAttempt[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    api.get<HistoryItem[]>("/analysis/history").then(setHistory).catch(() => setHistory([]));
+    let active = true;
+    const fail = (fallback: string) => (e: unknown) => {
+      if (active) setError(e instanceof ApiError ? e.message : fallback);
+    };
+    setError(null);
+    api
+      .get<HistoryItem[]>("/analysis/history")
+      .then((items) => active && setHistory(items || []))
+      .catch(fail("Could not load your saved analyses."));
     api
       .get<InterviewAttempt[]>("/interview/history")
-      .then(setAttempts)
-      .catch(() => setAttempts([]));
-  }, []);
+      .then((items) => active && setAttempts(items || []))
+      .catch(fail("Could not load interview attempts."));
+    return () => {
+      active = false;
+    };
+  }, [reload]);
 
   const best = history.reduce((m, h) => Math.max(m, h.match_score), 0);
   const name = user?.email.split("@")[0] ?? "there";
 
+  function activateCard(e: KeyboardEvent<HTMLDivElement>, to: string) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigate(to);
+    }
+  }
+
   return (
-    <Page title={`Welcome back, ${name}`} subtitle="Your career workspace at a glance.">
+    <Page
+      title={`Welcome back, ${name}`}
+      subtitle="Your career workspace at a glance."
+      actions={
+        error ? (
+          <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>
+            Retry
+          </Button>
+        ) : undefined
+      }
+    >
+      {error && (
+        <div style={{ marginBottom: 16 }}>
+          <ErrorAlert>{error}</ErrorAlert>
+        </div>
+      )}
       <div className="tiles" style={{ marginBottom: 24 }}>
         <Card className="tile">
           <span className="k">{history.length}</span>
@@ -69,7 +104,7 @@ export default function Dashboard() {
             role="button"
             tabIndex={0}
             onClick={() => navigate(t.to)}
-            onKeyDown={(e) => (e.key === "Enter" ? navigate(t.to) : undefined)}
+            onKeyDown={(e) => activateCard(e, t.to)}
           >
             <div className="ic">
               <t.icon size={19} />

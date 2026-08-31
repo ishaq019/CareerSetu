@@ -25,6 +25,11 @@ The app runs at http://localhost:5173.
 ```env
 # frontend/.env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+# Set this to the public path the app is served from. For the public GitHub
+# Pages build, the deploy workflow sets VITE_BASE=/CareerSetu/ at build time.
+# For other hosts served at the domain root, leave it empty.
+VITE_BASE=
 ```
 
 ## 📜 Scripts
@@ -72,4 +77,9 @@ JWTs from the backend are managed by the `AuthProvider` context in `src/lib/auth
 npm run build      # output in dist/
 ```
 
-Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages) and point `VITE_API_BASE_URL` at your deployed backend.
+Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages). The build embeds two variables:
+
+- `VITE_API_BASE_URL` — absolute base URL of the deployed backend (with `/api/v1` suffix).
+- `VITE_BASE` — public path the app is served from. Leave empty for domain-root deployments; set to `/<repo>/` for GitHub Pages project sites (the deploy workflow already does this).
+
+The Pages site (`syedishaq.me/CareerSetu/`) uses `VITE_BASE=/CareerSetu/` and `VITE_API_BASE_URL=https://career-setu-azure.vercel.app/api/v1`.

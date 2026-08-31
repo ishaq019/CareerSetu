@@ -1,11 +1,14 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import models  # noqa: F401  (register ORM models)
 from app.api.router import api_router
@@ -17,6 +20,9 @@ VERSION = "1.2.0"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Refuse to boot with a weak/placeholder JWT secret in production — better
+    # to crash loud than silently sign every session with a forgeable key.
+    settings.validate_for_environment()
     # In development we auto-create tables so the app runs without a manual
     # migration step. Production should run ``alembic upgrade head`` instead.
     if settings.environment == "development":
@@ -40,16 +46,30 @@ app = FastAPI(
 # or stale ``CORS_ORIGINS`` env var on the host can never silently break sign-in —
 # Starlette ORs the regex with the list, so localhost entries still work. A browser
 # Origin is scheme://host[:port] with no trailing slash, which is what these match.
+# Anchored at both ends so ``syedishaq.me.evil.example`` cannot match.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_origin_regex=r"https://([a-z0-9-]+\.)*syedishaq\.me",
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)*syedishaq\.me$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.exception_handler(SQLAlchemyError)
+async def _db_error(_: Request, exc: SQLAlchemyError):
+    """One place to turn a persistence failure into a clean 500.
+
+    ``get_db`` already closes (and therefore rolls back) the session in its
+    ``finally``, so routes don't need their own try/rollback blocks.
+    """
+    logging.getLogger("careersetu.db").exception("Database error", exc_info=exc)
+    return JSONResponse(
+        status_code=500, content={"detail": "Database error. Please try again."}
+    )
 
 
 @app.get("/health", tags=["health"])

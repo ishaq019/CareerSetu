@@ -25,10 +25,18 @@ export default function Roadmap() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
     api
       .get<RoadmapDoc>("/roadmap")
-      .then((d) => setItems((d.items as Item[]) || []))
-      .catch(() => setItems([]));
+      .then((d) => active && setItems((d.items as Item[]) || []))
+      .catch((e) => {
+        if (!active) return;
+        setItems([]);
+        setError(e instanceof ApiError ? e.message : "Could not load your saved roadmap.");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   function addSkill() {

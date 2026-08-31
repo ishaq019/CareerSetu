@@ -39,6 +39,9 @@ function SkillRow({ item }: { item: SkillResult }) {
 
 export function AnalysisView({ a }: { a: Analysis }) {
   const rec = recLabel(a.recommendation);
+  const strengths = a.strengths ?? [];
+  const gaps = a.gaps ?? [];
+  const roadmap = a.roadmap ?? [];
   return (
     <div className="stack" style={{ gap: 18 }}>
       <Card>
@@ -67,10 +70,10 @@ export function AnalysisView({ a }: { a: Analysis }) {
               <h3>Matched evidence</h3>
               <p>Skills the resume already backs up.</p>
             </div>
-            <Badge tone="good">{a.strengths.length}</Badge>
+            <Badge tone="good">{strengths.length}</Badge>
           </div>
-          {a.strengths.length ? (
-            a.strengths.map((s) => <SkillRow key={s.skill} item={s} />)
+          {strengths.length ? (
+            strengths.map((s) => <SkillRow key={s.skill} item={s} />)
           ) : (
             <p className="muted" style={{ fontSize: 13.5 }}>
               No fully matched skills detected yet — focus on the priority gaps.
@@ -84,10 +87,10 @@ export function AnalysisView({ a }: { a: Analysis }) {
               <h3>Priority gaps</h3>
               <p>Where the resume needs clearer proof.</p>
             </div>
-            <Badge tone="warn">{a.gaps.length}</Badge>
+            <Badge tone="warn">{gaps.length}</Badge>
           </div>
-          {a.gaps.length ? (
-            a.gaps.map((s) => <SkillRow key={s.skill} item={s} />)
+          {gaps.length ? (
+            gaps.map((s) => <SkillRow key={s.skill} item={s} />)
           ) : (
             <p className="muted" style={{ fontSize: 13.5 }}>
               Nothing major missing. Tighten wording and add measurable results.
@@ -96,7 +99,7 @@ export function AnalysisView({ a }: { a: Analysis }) {
         </Card>
       </div>
 
-      {a.roadmap.length > 0 && (
+      {roadmap.length > 0 && (
         <Card>
           <div className="card-h">
             <div>
@@ -106,7 +109,7 @@ export function AnalysisView({ a }: { a: Analysis }) {
             <TriangleAlert size={18} className="muted" />
           </div>
           <div className="two-col">
-            {a.roadmap.map((r) => (
+            {roadmap.map((r) => (
               <div className="road" key={r.skill}>
                 <Badge tone={r.priority === "high" ? "bad" : "warn"}>{r.priority} priority</Badge>
                 <h4>{r.skill}</h4>
@@ -114,7 +117,7 @@ export function AnalysisView({ a }: { a: Analysis }) {
                   Target: {r.target_level}
                 </span>
                 <ul>
-                  {r.steps.map((step) => (
+                  {(r.steps ?? []).map((step) => (
                     <li key={step}>{step}</li>
                   ))}
                 </ul>

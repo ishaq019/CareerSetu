@@ -1,6 +1,14 @@
 // Shared UI primitives for CareerSetu. Small, composable, and styled entirely
 // through the design-system classes in styles.css.
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  forwardRef,
+  useId,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from "react";
 import { Link } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 
@@ -40,7 +48,7 @@ export function Card({
   children,
   className = "",
   ...rest
-}: { children: ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={`card ${className}`} {...rest}>
       {children}
@@ -68,7 +76,7 @@ export function Field({
   );
 }
 
-export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input(props, ref) {
     return <input ref={ref} className="input" {...props} />;
   },
@@ -76,7 +84,7 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
 
 export const Textarea = forwardRef<
   HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+  TextareaHTMLAttributes<HTMLTextAreaElement>
 >(function Textarea(props, ref) {
   return <textarea ref={ref} className="textarea" {...props} />;
 });
@@ -130,6 +138,7 @@ export function EmptyState({
 
 // Conic-free SVG ring gauge — the app's signature score element.
 export function ScoreGauge({ value, label = "MATCH" }: { value: number; label?: string }) {
+  const gradientId = useId();
   const v = Math.max(0, Math.min(100, value));
   const r = 74;
   const c = 2 * Math.PI * r;
@@ -139,7 +148,7 @@ export function ScoreGauge({ value, label = "MATCH" }: { value: number; label?: 
     <div className="gauge">
       <svg width="168" height="168" viewBox="0 0 168 168">
         <defs>
-          <linearGradient id="gauge-grad" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="var(--a1)" />
             <stop offset="100%" stopColor="var(--a2)" />
           </linearGradient>
@@ -151,7 +160,7 @@ export function ScoreGauge({ value, label = "MATCH" }: { value: number; label?: 
           cy="84"
           r={r}
           strokeWidth="12"
-          stroke={v >= 60 ? "url(#gauge-grad)" : tone}
+          stroke={v >= 60 ? `url(#${gradientId})` : tone}
           strokeDasharray={c}
           strokeDashoffset={offset}
         />

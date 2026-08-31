@@ -83,7 +83,6 @@ export default function Landing() {
           </div>
         </div>
       </header>
-      {/* HERO_PLACEHOLDER */}
 
       <section className="hero wrap">
         <div className="hero-grid">

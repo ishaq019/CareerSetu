@@ -1,30 +1,46 @@
 // Typed API client for the CareerSetu backend. Centralises the base URL, JWT
 // bearer token, JSON handling and error surfacing so pages stay declarative.
 
-const API_BASE = "https://career-setu-azure.vercel.app/api/v1";
-  // (import.meta.env.VITE_API_BASE_URL as string | undefined)
-  // "http://localhost:8000/api/v1";
+// Configurable per deployment, with a working default for the public build.
+// Trailing slashes are stripped so paths can't become `/api/v1//auth/me`.
+const API_BASE = (
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+  "https://career-setu-azure.vercel.app/api/v1"
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 /** Absolute base URL of the backend API — used for full-page OAuth redirects. */
 export const apiBaseUrl = API_BASE;
 
 const TOKEN_KEY = "careersetu_token";
+// Falls back to a module-level copy when localStorage is unavailable (Safari
+// private mode, sandboxed iframes) so sign-in still works for the tab's life.
+let memoryToken: string | null = null;
+let unauthorizedHandler: (() => void) | undefined;
+
+/** Register the auth provider's session-expiry handler. */
+export function setUnauthorizedHandler(handler: (() => void) | undefined) {
+  unauthorizedHandler = handler;
+}
 
 export function getToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY) || memoryToken;
   } catch {
-    return null;
+    return memoryToken;
   }
 }
 export function setToken(token: string) {
+  memoryToken = token;
   try {
     localStorage.setItem(TOKEN_KEY, token);
   } catch {
-    /* storage unavailable — token stays in-memory for this tab only */
+    /* storage unavailable — memoryToken carries it for this tab */
   }
 }
 export function clearToken() {
+  memoryToken = null;
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -81,6 +97,12 @@ async function request<T>(
 
   const data = await parse(res);
   if (!res.ok) {
+    if (res.status === 401 && opts.auth !== false) {
+      // Avoid leaving a protected screen visible after a token expires or is
+      // revoked. The auth provider will clear its user state and route to sign-in.
+      clearToken();
+      unauthorizedHandler?.();
+    }
     const detail =
       (data && typeof data === "object" && (data.detail || data.message)) ||
       (typeof data === "string" && data) ||

@@ -1,6 +1,8 @@
 """Learning-roadmap generation and per-user persistence."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from app.models import RoadmapRecord, User
 from app.modules.auth.router import current_user
 
 router = APIRouter()
+logger = logging.getLogger("careersetu.roadmap")
 
 
 class RoadmapRequest(BaseModel):
@@ -57,7 +60,10 @@ async def generate(payload: RoadmapRequest, user: User = Depends(current_user)):
         if result.items:
             return result.model_dump()
     except Exception:
-        pass
+        # Free-tier LLM is best-effort here — the deterministic baseline is
+        # always returned so the feature never goes dark, and provider errors
+        # are logged for observability.
+        logger.exception("Roadmap generation fell back to baseline")
     return _baseline(skills)
 
 
@@ -73,6 +79,7 @@ def save_roadmap(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ):
+    # Each user has at most one roadmap, so this is an upsert.
     record = db.query(RoadmapRecord).filter(RoadmapRecord.user_id == user.id).first()
     if record:
         record.items = payload.items

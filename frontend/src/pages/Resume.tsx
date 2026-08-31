@@ -27,13 +27,44 @@ function esc(s: string): string {
   );
 }
 
+// Only allow http(s) URLs; reject whitespace, control and quoting characters
+// and dangerous schemes. LLM output is not a trustworthy source for hrefs.
+function safeUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/[\u0000-\u0020\u007f<>"'`\\]/.test(trimmed)) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+/** `<a>` for a validated URL, or null when the value isn't a safe link. */
+function link(value: string | undefined, text?: string): string | null {
+  const url = safeUrl(value);
+  return url
+    ? `<a href="${esc(url)}" rel="noopener noreferrer">${esc(text ?? value ?? "")}</a>`
+    : null;
+}
+
 // Render the structured resume as a print-optimised HTML document and open the
 // browser print dialog (Save as PDF). This is a faithful visual resume — not a
-// compile of the .tex — so it needs no server-side TeX toolchain.
-function printResume(c: LatexResumeContent) {
-  const contacts = [c.contact.phone, c.contact.email, c.contact.location, c.contact.portfolio, c.contact.linkedin, c.contact.github]
+// compile of the .tex — so it needs no server-side TeX toolchain. Returns
+// null on success or an error message if the popup was blocked.
+function printResume(c: LatexResumeContent): string | null {
+  const contacts = [
+    esc(c.contact.phone),
+    esc(c.contact.email),
+    esc(c.contact.location),
+    link(c.contact.portfolio),
+    link(c.contact.linkedin),
+    link(c.contact.github),
+  ]
     .filter(Boolean)
-    .map(esc)
     .join(" &nbsp;•&nbsp; ");
   const section = (title: string, body: string) =>
     body ? `<h2>${esc(title)}</h2>${body}` : "";
@@ -54,7 +85,7 @@ function printResume(c: LatexResumeContent) {
   const projects = c.projects
     ?.filter((p) => p.name)
     .map((p) => {
-      const links = [p.github && `<a href="${esc(p.github)}">Code</a>`, p.live && `<a href="${esc(p.live)}">Live</a>`]
+      const links = [link(p.github, "Code"), link(p.live, "Live")]
         .filter(Boolean)
         .join(" | ");
       const right = [links, esc(p.date)].filter(Boolean).join(" &nbsp; ");
@@ -105,15 +136,13 @@ ${section("Certifications", certs)}
 
   const w = window.open("", "_blank");
   if (!w) {
-    alert("Please allow pop-ups to save the resume as a PDF.");
-    return;
+    return "Please allow pop-ups to save the resume as a PDF.";
   }
   w.document.open();
   w.document.write(html);
   w.document.close();
+  return null;
 }
-
-// PLACEHOLDER_COMPONENT
 
 function Tags({ items, tone }: { items: string[]; tone?: "good" | "warn" | "bad" }) {
   if (!items?.length) return <span className="muted" style={{ fontSize: 13 }}>None detected.</span>;
@@ -201,7 +230,13 @@ export default function Resume() {
                     <Button onClick={() => downloadTex(result.latex, result.filename)}>
                       <Download size={15} /> Download .tex
                     </Button>
-                    <Button variant="ghost" onClick={() => printResume(result.content)}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        const err = printResume(result.content);
+                        if (err) setError(err);
+                      }}
+                    >
                       <Printer size={15} /> Save as PDF
                     </Button>
                   </div>

@@ -67,6 +67,12 @@ export default function Knowledge() {
               ingest(e.dataTransfer.files?.[0]);
             }}
             onClick={() => inputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
             role="button"
             tabIndex={0}
             style={{
@@ -93,7 +99,11 @@ export default function Knowledge() {
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               disabled={busy}
               style={{ display: "none" }}
-              onChange={(e) => ingest(e.target.files?.[0])}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.currentTarget.value = "";
+                void ingest(file);
+              }}
             />
           </div>
           {error && (

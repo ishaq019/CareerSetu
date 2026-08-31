@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import re
 from typing import Any, TypeVar
 
@@ -72,9 +73,12 @@ async def _chat(messages: list[dict[str, str]], *, json_mode: bool) -> str:
     headers = _headers()
     last_exc: Exception | None = None
     attempts = max(1, settings.llm_max_retries + 1)
+    # Cap the per-attempt socket timeout so a hanging upstream can't eat the
+    # full request budget; keep at least 5s so very small replies still fit.
+    per_attempt_timeout = max(5.0, float(settings.llm_timeout_seconds) / attempts)
     json_fallback_tried = False
 
-    async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
+    async with httpx.AsyncClient(timeout=per_attempt_timeout) as client:
         for attempt in range(attempts):
             try:
                 resp = await client.post(url, headers=headers, json=payload)
@@ -107,12 +111,15 @@ async def _chat(messages: list[dict[str, str]], *, json_mode: bool) -> str:
                         f"gateway returned HTTP {resp.status_code}"
                     )
                 else:
-                    detail = resp.text[:300]
                     raise LLMCallFailed(
-                        f"gateway returned HTTP {resp.status_code}: {detail}"
+                        f"gateway returned HTTP {resp.status_code}"
                     )
             if attempt < attempts - 1:
-                await asyncio.sleep(0.5 * (attempt + 1))
+                # Exponential backoff with full jitter — avoids thundering-herd
+                # retries against the free-tier OpenRouter gateways and spreads
+                # the load when many users hit a transient 429 at once.
+                base = 0.5 * (2 ** attempt)
+                await asyncio.sleep(base + random.uniform(0, base))
 
     raise LLMCallFailed(str(last_exc) if last_exc else "LLM call failed")
 

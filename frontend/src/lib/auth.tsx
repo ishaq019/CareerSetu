@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, clearToken, getToken, setToken } from "./api";
+import { api, clearToken, getToken, setToken, setUnauthorizedHandler } from "./api";
 import type { TokenResponse, User } from "./types";
 
 type AuthState = {
@@ -26,6 +26,13 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+
+  // Any authenticated request can discover an expired or revoked JWT (api.ts
+  // already clears the token); drop the user so the shell routes to sign-in.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(undefined);
+  }, []);
 
   useEffect(() => {
     let active = true;

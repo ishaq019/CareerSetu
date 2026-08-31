@@ -56,7 +56,11 @@ export function UploadTextarea({
             type="file"
             accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             disabled={busy}
-            onChange={(e) => onFile(e.target.files?.[0])}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.currentTarget.value = "";
+              void onFile(file);
+            }}
           />
         </label>
         <span className="muted" style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>

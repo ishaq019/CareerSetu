@@ -23,6 +23,20 @@ from app.db import Base, engine
 
 
 def main() -> int:
+    # Refuse against a production database — a stray `python -m scripts.reset_db`
+    # on a real host would wipe every user account.
+    if settings.is_production:
+        if "--i-know-what-im-doing" not in sys.argv:
+            print(
+                "ERROR: reset_db is disabled in production. Refusing to drop tables.\n"
+                "       Pass --i-know-what-im-doing to override."
+            )
+            return 2
+        print(
+            "WARNING: running reset_db against a production database. "
+            "All data will be destroyed."
+        )
+
     assume_yes = "--yes" in sys.argv or "-y" in sys.argv
     target = "sqlite" if settings.is_sqlite else "postgresql"
     print(f"Target database: {target}")

@@ -1,11 +1,10 @@
 // Sign in / sign up screen. Uses the AuthContext (which calls the correct
 // /auth/login and /auth/signup endpoints — fixing the old /auth/signin bug).
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { apiBaseUrl, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { Aurora } from "../components/Aurora";
 import { Brand, Button, ErrorAlert, Field, Input } from "../components/ui";
 
 const OAUTH_ERRORS: Record<string, string> = {
@@ -56,7 +55,7 @@ export default function Login() {
     }
   }, [params, loginWithToken, navigate]);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
@@ -80,7 +79,6 @@ export default function Login() {
 
   return (
     <div className="auth-screen">
-      <Aurora />
       <motion.div
         className="auth-card card"
         initial={{ opacity: 0, y: 18 }}

@@ -141,6 +141,26 @@ class Settings(BaseSettings):
         return self.database_url.startswith("sqlite")
 
     @property
+    def is_production(self) -> bool:
+        return self.environment.lower() in {"production", "prod"}
+
+    def validate_for_environment(self) -> None:
+        """Hard-fail on settings that are only acceptable in development.
+
+        Called from ``app.main`` at startup so a misconfigured production
+        deploy (e.g. a missing or placeholder ``JWT_SECRET``) crashes loud
+        instead of silently signing tokens with a forgeable key.
+        """
+        placeholder = "dev-only-change-this-secret-to-a-32-byte-random-value"
+        if self.is_production:
+            if len(self.jwt_secret) < 32 or self.jwt_secret == placeholder:
+                raise RuntimeError(
+                    "JWT_SECRET must be set to a random string of at least 32 "
+                    "characters in production. Generate one with: python -c "
+                    "'import secrets; print(secrets.token_urlsafe(48))'"
+                )
+
+    @property
     def llm_configured(self) -> bool:
         return bool(self.llm_api_key and self.llm_provider)
 

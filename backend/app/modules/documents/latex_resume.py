@@ -37,10 +37,31 @@ def esc(value: str | None) -> str:
 
 
 def _url(value: str) -> str:
-    """Normalise a URL/handle to a bare href target (no escaping of the URL
-    itself beyond stripping); returns '' when empty."""
+    """Validate a URL/handle to be embedded in a LaTeX ``\\href{...}`` argument.
+
+    Returns the raw value when it is a safe http(s)/mailto target, else ``""``.
+    The function refuses anything that could break out of the ``\\href{}`` braces
+    (curly braces, backslashes, control characters) and any non-http(s) URL
+    scheme — e.g. ``javascript:``, ``file:``, ``data:``. ``mailto:`` is allowed
+    for the contact block. We do not URL-encode here; LaTeX's ``\\href`` is happy
+    with a raw URL and encoding it would mangle query strings in GitHub links.
+    """
     v = (value or "").strip()
-    return v
+    if not v:
+        return ""
+    # LaTeX would interpret these as structural / unsafe characters even inside
+    # an ``\href`` first argument.
+    if any(ch in v for ch in ("{", "}", "\\", "\n", "\r", "\t", "\0")):
+        return ""
+    lower = v.lower()
+    # Bare handle (no scheme): allow as a username-style link target.
+    if "://" not in v and ":" not in v:
+        return v
+    # Scheme present — it must be exactly http, https or mailto. Anything else
+    # (``javascript:``, ``file:``, ``data:``, ``ftp:`` …) is rejected.
+    if lower.startswith(("http://", "https://", "mailto:")):
+        return v
+    return ""
 
 
 PREAMBLE = r"""\documentclass[11pt,a4paper]{article}

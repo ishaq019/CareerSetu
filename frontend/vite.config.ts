@@ -9,7 +9,10 @@ import react from "@vitejs/plugin-react";
 // the React Router basename follows automatically.
 function normaliseBase(raw?: string): string {
   const value = (raw ?? "").trim();
-  if (!value || value === "/") return "/CareerSetu/";
+  // Default to root for non-GitHub-Pages deployments. The Pages workflow sets
+  // VITE_BASE="/CareerSetu/" at build time, so the public site still resolves
+  // to /CareerSetu/. Local dev also uses "/".
+  if (!value || value === "/") return "/";
   const withLead = value.startsWith("/") ? value : `/${value}`;
   return withLead.endsWith("/") ? withLead : `${withLead}/`;
 }

@@ -82,6 +82,12 @@ class KnowledgeStore:
                     "topic": chunk.topic or "general",
                 }
             )
+        # Drop the previous chunks for this source so an edited re-ingest can't
+        # leave obsolete text behind for retrieval to cite. Best-effort.
+        try:
+            self.collection.delete(where={"source": source})
+        except Exception:
+            pass
         self.collection.upsert(ids=ids, documents=docs, metadatas=metas)
         return len(chunks)
 

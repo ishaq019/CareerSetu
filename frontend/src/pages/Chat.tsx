@@ -1,6 +1,6 @@
 // Grounded career chat: retrieve-then-answer with visible citations. Handles
 // the 503 (no LLM / empty knowledge base) case with a clear message.
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import type { ChatResponse } from "../lib/types";
@@ -8,8 +8,10 @@ import { Page } from "../components/AppLayout";
 import { Badge, Button, Card, EmptyState, Input } from "../components/ui";
 
 type Msg =
-  | { role: "user"; text: string }
-  | { role: "bot"; text: string; confidence?: string; sources?: ChatResponse["sources"] };
+  | { id: number; role: "user"; text: string }
+  | { id: number; role: "bot"; text: string; confidence?: string; sources?: ChatResponse["sources"] };
+
+let nextId = 0;
 
 export default function Chat() {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -21,11 +23,11 @@ export default function Chat() {
     setTimeout(() => logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }), 40);
   }
 
-  async function send(e: React.FormEvent) {
+  async function send(e: FormEvent) {
     e.preventDefault();
     const question = input.trim();
     if (question.length < 3 || busy) return;
-    setMessages((m) => [...m, { role: "user", text: question }]);
+    setMessages((m) => [...m, { id: ++nextId, role: "user", text: question }]);
     setInput("");
     setBusy(true);
     scroll();
@@ -33,7 +35,7 @@ export default function Chat() {
       const res = await api.post<ChatResponse>("/chat", { question });
       setMessages((m) => [
         ...m,
-        { role: "bot", text: res.answer, confidence: res.confidence, sources: res.sources },
+        { id: ++nextId, role: "bot", text: res.answer, confidence: res.confidence, sources: res.sources },
       ]);
     } catch (err) {
       const msg =
@@ -42,7 +44,7 @@ export default function Chat() {
           : err instanceof Error
             ? err.message
             : "Something went wrong.";
-      setMessages((m) => [...m, { role: "bot", text: msg }]);
+      setMessages((m) => [...m, { id: ++nextId, role: "bot", text: msg }]);
     } finally {
       setBusy(false);
       scroll();
@@ -58,13 +60,13 @@ export default function Chat() {
               e.g. “How should I structure a system design answer?”
             </EmptyState>
           )}
-          {messages.map((m, i) =>
+          {messages.map((m) =>
             m.role === "user" ? (
-              <div className="msg user" key={i}>
+              <div className="msg user" key={m.id}>
                 {m.text}
               </div>
             ) : (
-              <div className="msg bot" key={i}>
+              <div className="msg bot" key={m.id}>
                 {m.confidence && (
                   <div style={{ marginBottom: 8 }}>
                     <Badge tone={m.confidence === "high" ? "good" : m.confidence === "low" ? "bad" : "warn"}>
